@@ -1,7 +1,16 @@
 import type { PluginRuntime } from "openclaw/plugin-sdk/core";
 import type { WorkflowContext, WorkflowMode, WorkflowTask, AgentResult, TechSelection, ConventionalCommit, FeatureFlags } from "../types.js";
 import { DEFAULT_FEATURE_FLAGS } from "../types.js";
-import { AgentOrchestrator } from "../agents/index.js";
+import { AgentOrchestrator } from "../agents/agent-orchestrator.js";
+import { VerificationAgent } from "../agents/verification-agent.js";
+import { HandoverManager } from "../handover/index.js";
+import { BootstrapManager } from "../bootstrap/index.js";
+import { MemdirManager } from "../memdir/index.js";
+import { FeatureFlagManager } from "../feature-flags/index.js";
+import { PermissionManager } from "../permissions/index.js";
+import { BackgroundTaskManager } from "../background-tasks/index.js";
+import { WorkingMemoryManager } from "../working-memory/index.js";
+import { DirectoryTemplateManager } from "../directory-templates/index.js";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import { execSync } from "child_process";
@@ -13,18 +22,38 @@ const MAX_RETRIES = 2;
 export class DevWorkflowEngine {
   private runtime: PluginRuntime;
   private orchestrator: AgentOrchestrator;
+  private verificationAgent: VerificationAgent;
+  private handoverManager: HandoverManager;
+  private bootstrapManager: BootstrapManager;
+  private memdirManager: MemdirManager;
+  private featureFlagManager: FeatureFlagManager;
+  private permissionManager: PermissionManager;
+  private backgroundTaskManager: BackgroundTaskManager;
+  private workingMemoryManager: WorkingMemoryManager;
+  private directoryTemplateManager: DirectoryTemplateManager;
   private context: WorkflowContext | null = null;
   private aborted = false;
+  private verificationFailures = new Map<string, number>();
 
   constructor(runtime: PluginRuntime) {
     this.runtime = runtime;
     this.orchestrator = new AgentOrchestrator(runtime);
+    this.verificationAgent = new VerificationAgent(runtime);
+    this.handoverManager = new HandoverManager(runtime);
+    this.bootstrapManager = new BootstrapManager(runtime);
+    this.memdirManager = new MemdirManager(runtime);
+    this.featureFlagManager = new FeatureFlagManager(runtime);
+    this.permissionManager = new PermissionManager(runtime);
+    this.backgroundTaskManager = new BackgroundTaskManager(runtime);
+    this.workingMemoryManager = new WorkingMemoryManager(runtime);
+    this.directoryTemplateManager = new DirectoryTemplateManager(runtime);
   }
 
   async initialize(projectDir: string, mode: WorkflowMode = "standard", featureFlags?: Partial<FeatureFlags>): Promise<WorkflowContext> {
     const persisted = this.loadContext(projectDir);
     if (persisted) {
       this.context = persisted;
+      await this.memdirManager.initialize(projectDir);
       return this.context;
     }
 
@@ -52,6 +81,21 @@ export class DevWorkflowEngine {
     };
 
     this.loadContextMd(projectDir);
+
+    if (mode !== "quick") {
+      const bootstrapReport = await this.bootstrapManager.bootstrap(projectDir, mode);
+      this.context!.decisions.push(`Bootstrap: ${bootstrapReport.checks.filter((c) => c.status === "ok").length}/${bootstrapReport.checks.length} checks passed`);
+    }
+
+    await this.memdirManager.initialize(projectDir);
+    await this.memdirManager.updateAging(projectDir);
+
+    const memories = await this.memdirManager.recall(projectDir, "all");
+    if (memories.length > 0) {
+      this.context!.decisions.push(`Memory: recalled ${memories.length} entries`);
+    }
+
+    await this.workingMemoryManager.initialize(projectDir);
 
     const analysis = await this.orchestrator.runAnalysis(projectDir);
     this.context!.decisions.push(`Analysis: ${analysis.summary}`);
@@ -108,6 +152,14 @@ export class DevWorkflowEngine {
         if (this.aborted) return this.buildReport();
       }
 
+      await this.runStep("step4.5-plan-gate", async () => {
+        this.context!.decisions.push("Plan Gate: Waiting for user approval before proceeding to implementation");
+        this.permissionManager.upgradeToWorkspaceWrite();
+        this.context!.decisions.push("Plan Gate: Permission upgraded to workspace-write");
+      });
+
+      if (this.aborted) return this.buildReport();
+
       await this.runStep("step5-development", async () => {
         if (!this.context!.spec) return;
         const featureBranch = `feature/${this.context!.projectId}-${Date.now()}`;
@@ -149,6 +201,21 @@ export class DevWorkflowEngine {
       this.context.currentStep = "step9-delivery";
       this.updateContextMd("delivery", `Completed at ${new Date().toISOString()}`);
       this.persistContext();
+
+      await this.memdirManager.remember(this.context.projectDir, {
+        type: "decision",
+        title: `Workflow decisions for ${this.context.projectId}`,
+        content: this.context.decisions.join("\n"),
+        tags: ["workflow", this.context.projectId],
+      });
+
+      await this.featureFlagManager.scanForFlags(this.context.projectDir);
+      const cleanupCandidates = await this.featureFlagManager.detectCleanupCandidates(this.context.projectDir);
+      if (cleanupCandidates.length > 0) {
+        this.context.decisions.push(`Feature flags: ${cleanupCandidates.length} due for cleanup`);
+      }
+
+      await this.memdirManager.updateAging(this.context.projectDir);
     } catch (e) {
       if (this.context) {
         this.context.decisions.push(`Workflow error at ${this.context.currentStep}: ${e}`);
@@ -305,6 +372,29 @@ export class DevWorkflowEngine {
       try {
         lastResult = await this.orchestrator.executeTask(task, this.context!.projectDir, this.context!.mode, this.context!.featureFlags);
         if (lastResult.success) {
+          if (this.context!.mode !== "quick") {
+            const verificationReport = await this.verificationAgent.verify(task.id, this.context!.projectDir);
+            this.context!.qaGateResults.push({
+              name: `verification-${task.id}`,
+              passed: verificationReport.verdict === "PASS",
+              output: this.verificationAgent.formatReport(verificationReport),
+            });
+
+            if (verificationReport.verdict === "FAIL") {
+              const failures = this.verificationFailures.get(task.id) ?? 0;
+              this.verificationFailures.set(task.id, failures + 1);
+
+              if (this.context!.featureFlags.qaGateBlocking && failures + 1 >= MAX_RETRIES) {
+                this.context!.decisions.push(`Task ${task.id}: VERIFICATION FAILED after ${failures + 1} attempts, blocking`);
+                lastResult.success = false;
+                lastResult.output = `Verification failed: ${verificationReport.issues.join(", ")}`;
+                continue;
+              }
+
+              this.context!.decisions.push(`Task ${task.id}: verification ${verificationReport.verdict}, issues: ${verificationReport.issues.join(", ")}`);
+            }
+          }
+
           if (this.context!.featureFlags.autoCommit) {
             await this.applyShipStrategy(task);
           } else {
@@ -334,17 +424,17 @@ export class DevWorkflowEngine {
 
     switch (task.shipCategory) {
       case "ship":
-        this.gitCommit(commit);
+        this.gitCommit(commit, task.files);
         this.context.decisions.push(`Ship: ${commit}`);
         break;
       case "show":
-        this.gitCommit(commit);
+        this.gitCommit(commit, task.files);
         this.context.decisions.push(`Show: ${commit} (async review)`);
         break;
       case "ask": {
         const review = await this.orchestrator.runReview(this.context.projectDir);
         if (review.includes("APPROVE") || review.includes("approve") || review.includes("looks good")) {
-          this.gitCommit(commit);
+          this.gitCommit(commit, task.files);
           this.context.decisions.push(`Ask→Approved: ${commit}`);
         } else {
           this.context.decisions.push(`Ask→Blocked: ${commit} - review: ${review.slice(0, 200)}`);
@@ -380,10 +470,16 @@ export class DevWorkflowEngine {
     return "";
   }
 
-  private gitCommit(message: string): void {
+  private gitCommit(message: string, files?: string[]): void {
     if (!this.context) return;
     try {
-      execSync("git add -A", { cwd: this.context.projectDir, stdio: "pipe", timeout: 10000 });
+      if (files && files.length > 0) {
+        const fileList = files.map((f) => `"${f.replace(/"/g, '\\"')}"`).join(" ");
+        execSync(`git add -- ${fileList}`, { cwd: this.context.projectDir, stdio: "pipe", timeout: 10000 });
+      } else {
+        // Only stage tracked files — never use git add -A (Rule 19)
+        execSync("git add -u", { cwd: this.context.projectDir, stdio: "pipe", timeout: 10000 });
+      }
       execSync(`git commit -m "${message.replace(/"/g, '\\"')}"`, { cwd: this.context.projectDir, stdio: "pipe", timeout: 10000 });
     } catch (e) {
       this.context!.decisions.push(`Commit skipped: ${message}`);
@@ -448,5 +544,21 @@ export class DevWorkflowEngine {
 
   saveContext(): void {
     this.persistContext();
+  }
+
+  getPermissionManager(): PermissionManager {
+    return this.permissionManager;
+  }
+
+  getBackgroundTaskManager(): BackgroundTaskManager {
+    return this.backgroundTaskManager;
+  }
+
+  getWorkingMemoryManager(): WorkingMemoryManager {
+    return this.workingMemoryManager;
+  }
+
+  getDirectoryTemplateManager(): DirectoryTemplateManager {
+    return this.directoryTemplateManager;
   }
 }

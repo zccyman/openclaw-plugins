@@ -1,1 +1,8 @@
-node_modules/\ndist/\n*.tsbuildinfo\n.DS_Store
+node_modules/
+dist/
+*.tsbuildinfo
+.DS_Store
+pnpm-lock.yaml
+__pycache__/
+*.pyc
+data/

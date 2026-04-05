@@ -1,0 +1,51 @@
+{
+  "name": "@openclaw/cross-platform-message-sync",
+  "version": "0.1.0",
+  "description": "OpenClaw Cross-Platform Message Sync plugin — WeChat/QQ/Feishu message sync, prompt history, at-mention routing",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./tools": "./dist/tools/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "oxlint src/"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "0.34.49",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "openclaw": "file:../../../openclaw",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0",
+    "oxlint": "^0.15.0"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.4.2"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
+    }
+  },
+  "openclaw": {
+    "extensions": [
+      "./src/index.ts"
+    ],
+    "setupEntry": "./setup-entry.ts",
+    "install": {
+      "npmSpec": "@openclaw/cross-platform-message-sync",
+      "defaultChoice": "npm",
+      "minHostVersion": ">=2026.4.2"
+    },
+    "bundle": {
+      "stageRuntimeDependencies": true
+    }
+  }
+}

@@ -9,7 +9,15 @@
     ".": "./dist/index.js",
     "./engine": "./dist/engine/index.js",
     "./agents": "./dist/agents/index.js",
-    "./tools": "./dist/tools/index.js"
+    "./tools": "./dist/tools/index.js",
+    "./handover": "./dist/handover/index.js",
+    "./bootstrap": "./dist/bootstrap/index.js",
+    "./memdir": "./dist/memdir/index.js",
+    "./feature-flags": "./dist/feature-flags/index.js",
+    "./permissions": "./dist/permissions/index.js",
+    "./background-tasks": "./dist/background-tasks/index.js",
+    "./working-memory": "./dist/working-memory/index.js",
+    "./directory-templates": "./dist/directory-templates/index.js"
   },
   "scripts": {
     "build": "tsc",

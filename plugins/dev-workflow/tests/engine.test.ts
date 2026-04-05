@@ -190,7 +190,7 @@ describe("DevWorkflowEngine", () => {
     const { DevWorkflowEngine } = await import("../src/engine/index.js");
     const engine = new DevWorkflowEngine(createMockRuntime());
     await engine.initialize(testDir, "full");
-    expect(existsSync(join(testDir, ".dev-workflow.md"))).toBe(false);
+    expect(existsSync(join(testDir, ".dev-workflow.md"))).toBe(true);
   });
 
   it("engine handles full mode with tech selection step", async () => {
