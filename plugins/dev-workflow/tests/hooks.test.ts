@@ -1,21 +1,71 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 
 vi.mock("openclaw/plugin-sdk/core", () => ({}));
 
+vi.mock("../src/channel/runtime.js", () => ({
+  getEngine: vi.fn(() => ({
+    getContext: vi.fn(() => null),
+  })),
+}));
+
+vi.mock("../src/agents/verification-agent.js", () => ({
+  VerificationAgent: vi.fn().mockImplementation(() => ({
+    verify: vi.fn().mockResolvedValue({ verdict: "PASS", issues: [], formatReport: vi.fn().mockReturnValue("") }),
+  })),
+}));
+
+vi.mock("../src/handover/index.js", () => ({
+  HandoverManager: vi.fn().mockImplementation(() => ({
+    consume: vi.fn().mockResolvedValue(null),
+    generate: vi.fn().mockResolvedValue(""),
+  })),
+}));
+
+vi.mock("../src/memdir/index.js", () => ({
+  MemdirManager: vi.fn().mockImplementation(() => ({
+    initialize: vi.fn().mockResolvedValue(undefined),
+    updateAging: vi.fn().mockResolvedValue(undefined),
+    recall: vi.fn().mockResolvedValue([]),
+    remember: vi.fn().mockResolvedValue({}),
+  })),
+}));
+
+vi.mock("../src/bootstrap/index.js", () => ({
+  BootstrapManager: vi.fn().mockImplementation(() => ({
+    bootstrap: vi.fn().mockResolvedValue({ checks: [], suggestions: [] }),
+  })),
+}));
+
+vi.mock("../src/feature-flags/index.js", () => ({
+  FeatureFlagManager: vi.fn().mockImplementation(() => ({
+    scanForFlags: vi.fn().mockResolvedValue([]),
+    detectCleanupCandidates: vi.fn().mockResolvedValue([]),
+  })),
+}));
+
 describe("registerDevWorkflowHooks", () => {
-  it("registers 4 hooks without errors", async () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("registers hooks without errors", async () => {
     const { registerDevWorkflowHooks } = await import("../src/hooks/index.js");
     const registerHook = vi.fn();
     const api = {
       logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
       registerHook,
+      runtime: { logging: { getChildLogger: vi.fn().mockReturnValue({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }) } },
     } as any;
     registerDevWorkflowHooks(api);
-    expect(registerHook).toHaveBeenCalledTimes(4);
-    expect(registerHook).toHaveBeenCalledWith("session_start", expect.any(Function), { name: "dev-workflow-session-start" });
-    expect(registerHook).toHaveBeenCalledWith("session_end", expect.any(Function), { name: "dev-workflow-session-end" });
-    expect(registerHook).toHaveBeenCalledWith("before_tool_call", expect.any(Function), { name: "dev-workflow-before-tool-call" });
-    expect(registerHook).toHaveBeenCalledWith("after_tool_call", expect.any(Function), { name: "dev-workflow-after-tool-call" });
+    expect(registerHook).toHaveBeenCalled();
+    const hookNames = registerHook.mock.calls.map((c: any) => c[2]?.name);
+    expect(hookNames).toContain("dev-workflow-session-start");
+    expect(hookNames).toContain("dev-workflow-session-end");
+    expect(hookNames).toContain("dev-workflow-before-tool-call");
+    expect(hookNames).toContain("dev-workflow-after-tool-call");
+    expect(hookNames).toContain("dev-workflow-task-completed");
+    expect(hookNames).toContain("dev-workflow-bootstrap");
+    expect(hookNames).toContain("dev-workflow-delivery");
   });
 
   it("session_start hook logs session key", async () => {
@@ -25,6 +75,7 @@ describe("registerDevWorkflowHooks", () => {
     const api = {
       logger: { info: loggerInfo, warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
       registerHook,
+      runtime: { logging: { getChildLogger: vi.fn().mockReturnValue({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }) } },
     } as any;
     registerDevWorkflowHooks(api);
 
@@ -40,6 +91,7 @@ describe("registerDevWorkflowHooks", () => {
     const api = {
       logger: { info: loggerInfo, warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
       registerHook,
+      runtime: { logging: { getChildLogger: vi.fn().mockReturnValue({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }) } },
     } as any;
     registerDevWorkflowHooks(api);
 
@@ -55,6 +107,7 @@ describe("registerDevWorkflowHooks", () => {
     const api = {
       logger: { info: loggerInfo, warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
       registerHook,
+      runtime: { logging: { getChildLogger: vi.fn().mockReturnValue({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }) } },
     } as any;
     registerDevWorkflowHooks(api);
 
@@ -70,6 +123,7 @@ describe("registerDevWorkflowHooks", () => {
     const api = {
       logger: { info: loggerInfo, warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
       registerHook,
+      runtime: { logging: { getChildLogger: vi.fn().mockReturnValue({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }) } },
     } as any;
     registerDevWorkflowHooks(api);
 

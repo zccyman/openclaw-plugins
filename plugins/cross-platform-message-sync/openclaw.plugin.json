@@ -1,0 +1,62 @@
+{
+  "id": "cross-platform-message-sync",
+  "enabledByDefault": false,
+  "channels": ["openclaw-weixin", "feishu", "qqbot"],
+  "skills": ["./skills"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "syncRulesPath": {
+        "type": "string",
+        "default": "data/sync_rules.json",
+        "description": "Path to sync rules configuration file"
+      },
+      "promptHistoryPath": {
+        "type": "string",
+        "default": "data/prompt-history.json",
+        "description": "Path to prompt history storage"
+      },
+      "topicsFilePath": {
+        "type": "string",
+        "default": "data/topics.json",
+        "description": "Path to persistent topic tracker storage"
+      },
+      "atMentionConfigPath": {
+        "type": "string",
+        "default": "data/at_mention_router_config.json",
+        "description": "Path to at-mention router configuration"
+      },
+      "requireMention": {
+        "type": "boolean",
+        "default": true,
+        "description": "Whether to require @mention to respond in groups"
+      },
+      "strictSync": {
+        "type": "boolean",
+        "default": false,
+        "description": "Strict mode: only forward exact matches from whitelist"
+      },
+      "codeCopyEnhancement": {
+        "type": "boolean",
+        "default": true,
+        "description": "Enhance code blocks with one-click copy prompts per platform"
+      },
+      "choiceRender": {
+        "type": "boolean",
+        "default": true,
+        "description": "Render multiple choice interactions with platform-specific hints"
+      },
+      "quoteReply": {
+        "type": "boolean",
+        "default": true,
+        "description": "Attach quote context to sub-agent replies with persistent topic tracking"
+      },
+      "autoSync": {
+        "type": "boolean",
+        "default": true,
+        "description": "Automatically sync messages across all configured platforms"
+      }
+    }
+  }
+}

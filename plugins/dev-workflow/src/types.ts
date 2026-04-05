@@ -6,17 +6,22 @@ export interface DevWorkflowAccount {
 export type WorkflowMode = "quick" | "standard" | "full";
 export type WorkflowStep =
   | "step0-analysis"
+  | "step0.1-handover"
+  | "step0.2-bootstrap"
   | "step0.5-spec-update"
   | "step1-requirement"
   | "step2-brainstorm"
   | "step3-spec"
   | "step4-tech-selection"
+  | "step4.5-plan-gate"
   | "step5-development"
   | "step6-review"
   | "step7-test"
   | "step8-docs"
   | "step8.5-github"
-  | "step9-delivery";
+  | "step8.6-tag-release"
+  | "step9-delivery"
+  | "step9.5-handover-cleanup";
 
 export type TaskStatus = "pending" | "in_progress" | "completed" | "cancelled" | "failed";
 export type ShipCategory = "ship" | "show" | "ask";

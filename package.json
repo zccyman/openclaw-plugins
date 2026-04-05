@@ -4,14 +4,15 @@
   "private": true,
   "description": "OpenClaw plugin collection — dev-workflow, wechat, and more",
   "type": "module",
-  "workspaces": [
-    "plugins/*"
-  ],
   "scripts": {
-    "build": "npm run build --workspaces",
-    "typecheck": "npm run typecheck --workspaces",
-    "test": "npm run test --workspaces",
-    "lint": "npm run lint --workspaces"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "pnpm": {
+    "overrides": {
+      "openclaw": "link:../openclaw"
+    }
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

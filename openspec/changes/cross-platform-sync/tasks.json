@@ -1,0 +1,58 @@
+[
+  {
+    "id": "T1",
+    "title": "创建插件结构和清单",
+    "description": "创建 plugin 目录结构、package.json、openclaw.plugin.json、tsconfig.json、vitest.config.ts、setup-entry.ts",
+    "category": "Ship",
+    "status": "pending"
+  },
+  {
+    "id": "T2",
+    "title": "实现 TypeScript 工具注册器",
+    "description": "编写 src/tools/index.ts + 6 个工具类（message-sync、prompt-history ×4、at-mention-status），通过 child_process 调用 Python 脚本",
+    "category": "Show",
+    "status": "pending"
+  },
+  {
+    "id": "T3",
+    "title": "同步 Python 工具脚本到插件目录",
+    "description": "复制 claw-mem/tools/*.py 到插件的 tools/ 目录",
+    "category": "Ship",
+    "status": "pending"
+  },
+  {
+    "id": "T4",
+    "title": "技能文档 (skills)",
+    "description": "创建 cross-platform-sync.skill.md + prompt-history.skill.md",
+    "category": "Ship",
+    "status": "pending"
+  },
+  {
+    "id": "T5",
+    "title": "Hooks 实现",
+    "description": "编写 before_tool_call 钩子（日志 + 频率限制）",
+    "category": "Show",
+    "status": "pending"
+  },
+  {
+    "id": "T6",
+    "title": "主入口文件 index.ts",
+    "description": "编写主入口，注册工具 + hooks，支持 channel 可选",
+    "category": "Show",
+    "status": "pending"
+  },
+  {
+    "id": "T7",
+    "title": "单元测试编写",
+    "description": "为工具类编写至少 5 个测试用例（TDD: RED→GREEN→REFACTOR）",
+    "category": "Ask",
+    "status": "pending"
+  },
+  {
+    "id": "T8",
+    "title": "QA Gate 质量门控",
+    "description": "运行 10 项 QA 检查：lint/format/tests/coverage/typecheck/simplify/commits/todos/docs/rules",
+    "category": "Ask",
+    "status": "pending"
+  }
+]
