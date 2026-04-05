@@ -446,6 +446,39 @@ Return a summary of what you did.`;
     }
   }
 
+  private static readonly MODE_MODELS: Record<WorkflowMode, Record<string, string>> = {
+    quick: {
+      brainstorm: "minimax-m2.5",
+      spec: "minimax-m2.5",
+      tech: "minimax-m2.5",
+      coder: "qwen3.6-plus",
+      reviewer: "glm-5.1",
+      test: "minimax-m2.5",
+      docs: "minimax-m2.5",
+      qa: "glm-5.1",
+    },
+    standard: {
+      brainstorm: "minimax-m2.5",
+      spec: "minimax-m2.5",
+      tech: "minimax-m2.5",
+      coder: "minimax-m2.5",
+      reviewer: "glm-5.1",
+      test: "minimax-m2.5",
+      docs: "minimax-m2.5",
+      qa: "glm-5.1",
+    },
+    full: {
+      brainstorm: "minimax-m2.5",
+      spec: "glm-5.1",
+      tech: "glm-5.1",
+      coder: "glm-5.1",
+      reviewer: "glm-5.1",
+      test: "glm-5.1",
+      docs: "minimax-m2.5",
+      qa: "glm-5.1",
+    },
+  };
+
   private selectAgent(difficulty: string): string {
     const modelMapping: Record<string, string> = {
       easy: "minimax-m2.5",
@@ -454,5 +487,31 @@ Return a summary of what you did.`;
       extreme: "qwen3",
     };
     return modelMapping[difficulty] ?? "minimax-m2.5";
+  }
+
+  /**
+   * 根据模式、角色和难度选择模型
+   * @param role - agent角色 (brainstorm, spec, tech, coder, reviewer, test, docs, qa)
+   * @param mode - 工作流模式
+   * @param difficulty - 任务难度 (仅coder角色使用)
+   * @param modelOverride - 用户自定义模型覆盖
+   */
+  selectModel(role: string, mode: WorkflowMode, difficulty?: string, modelOverride?: Record<string, string>): string {
+    // 1. 用户覆盖优先
+    if (modelOverride && modelOverride[role]) {
+      return modelOverride[role];
+    }
+    // 2. coder角色按难度升级
+    if (role === "coder" && difficulty) {
+      const difficultyUpgrade: Record<string, string> = {
+        hard: "glm-5.1",
+        extreme: "qwen3-coder-480b",
+      };
+      if (difficultyUpgrade[difficulty]) {
+        return difficultyUpgrade[difficulty];
+      }
+    }
+    // 3. 按模式默认
+    return AgentOrchestrator.MODE_MODELS[mode]?.[role] ?? "minimax-m2.5";
   }
 }

@@ -296,3 +296,64 @@ describe("AgentOrchestrator", () => {
     expect(runCalls.length).toBe(1);
   });
 });
+
+describe("selectModel", () => {
+  let orchestrator: any;
+
+  beforeEach(async () => {
+    const { AgentOrchestrator } = await import("../src/agents/index.js");
+    orchestrator = new AgentOrchestrator(createMockRuntime());
+  });
+
+  it("quick mode: uses free models for coder", () => {
+    expect(orchestrator.selectModel("coder", "quick")).toBe("qwen3.6-plus");
+  });
+
+  it("quick mode: uses glm-5.1 for reviewer", () => {
+    expect(orchestrator.selectModel("reviewer", "quick")).toBe("glm-5.1");
+  });
+
+  it("quick mode: uses minimax-m2.5 for brainstorm", () => {
+    expect(orchestrator.selectModel("brainstorm", "quick")).toBe("minimax-m2.5");
+  });
+
+  it("standard mode: uses minimax-m2.5 for coder by default", () => {
+    expect(orchestrator.selectModel("coder", "standard")).toBe("minimax-m2.5");
+  });
+
+  it("standard mode: uses glm-5.1 for qa", () => {
+    expect(orchestrator.selectModel("qa", "standard")).toBe("glm-5.1");
+  });
+
+  it("full mode: uses glm-5.1 for spec", () => {
+    expect(orchestrator.selectModel("spec", "full")).toBe("glm-5.1");
+  });
+
+  it("full mode: uses glm-5.1 for coder", () => {
+    expect(orchestrator.selectModel("coder", "full")).toBe("glm-5.1");
+  });
+
+  it("full mode: uses minimax-m2.5 for docs", () => {
+    expect(orchestrator.selectModel("docs", "full")).toBe("minimax-m2.5");
+  });
+
+  it("coder with hard difficulty upgrades to glm-5.1", () => {
+    expect(orchestrator.selectModel("coder", "standard", "hard")).toBe("glm-5.1");
+  });
+
+  it("coder with extreme difficulty upgrades to qwen3-coder-480b", () => {
+    expect(orchestrator.selectModel("coder", "quick", "extreme")).toBe("qwen3-coder-480b");
+  });
+
+  it("modelOverride takes highest priority", () => {
+    expect(orchestrator.selectModel("coder", "full", "hard", { coder: "kimi-k2.5" })).toBe("kimi-k2.5");
+  });
+
+  it("modelOverride for non-coder role", () => {
+    expect(orchestrator.selectModel("brainstorm", "quick", undefined, { brainstorm: "glm-5.1" })).toBe("glm-5.1");
+  });
+
+  it("unknown role falls back to minimax-m2.5", () => {
+    expect(orchestrator.selectModel("unknown-role", "quick")).toBe("minimax-m2.5");
+  });
+});

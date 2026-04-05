@@ -117,6 +117,7 @@ export interface FeatureFlags {
   coverageThreshold: number;
   maxFileLines: number;
   maxFunctionLines: number;
+  modelOverride: Record<string, string>;
 }
 
 export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
@@ -131,6 +132,7 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   coverageThreshold: 80,
   maxFileLines: 500,
   maxFunctionLines: 50,
+  modelOverride: {},
 };
 
 export interface WorkflowConfig {
