@@ -1,10 +1,8 @@
-import { defineChannelPluginEntry } from "openclaw/plugin-sdk/core";
-import { devWorkflowChannel } from "./channel/dev-workflow-channel.js";
+import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import { setDevWorkflowRuntime } from "./channel/runtime.js";
 import { registerDevWorkflowTools } from "./tools/index.js";
 import { registerDevWorkflowHooks } from "./hooks/index.js";
 
-export { devWorkflowChannel } from "./channel/dev-workflow-channel.js";
 export { setDevWorkflowRuntime } from "./channel/runtime.js";
 export { DevWorkflowEngine } from "./engine/index.js";
 export { AgentOrchestrator } from "./agents/agent-orchestrator.js";
@@ -18,13 +16,12 @@ export { BackgroundTaskManager } from "./background-tasks/index.js";
 export { WorkingMemoryManager } from "./working-memory/index.js";
 export { DirectoryTemplateManager } from "./directory-templates/index.js";
 
-export default defineChannelPluginEntry({
+export default definePluginEntry({
   id: "dev-workflow",
   name: "Dev Workflow",
   description: "AI-driven spec-driven development workflow with multi-agent orchestration",
-  plugin: devWorkflowChannel,
   setRuntime: setDevWorkflowRuntime,
-  registerFull(api) {
+  register(api) {
     registerDevWorkflowTools(api);
     registerDevWorkflowHooks(api);
   },

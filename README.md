@@ -9,7 +9,7 @@ OpenClaw plugin collection — multiple plugins in a single monorepo.
 | Plugin | Description | Status |
 |--------|-------------|--------|
 | [openharness](plugins/openharness/) | 116+ tools in a unified plugin: file I/O, shell, search, web, git, GitHub, LSP, code intel, MCP, sessions, memory, swarm, REPL, cost tracking, and more | ✅ Active |
-| [dev-workflow](plugins/dev-workflow/) | Spec-driven AI development workflow with multi-agent orchestration | ✅ Active |
+| [dev-workflow](plugins/dev-workflow/) | Spec-driven AI development workflow with multi-agent orchestration (cross-channel: WeChat/Feishu/QQ) | ✅ Active |
 | [cross-platform-message-sync](plugins/cross-platform-message-sync/) | Cross-platform message sync (WeChat/QQ/Feishu) | ✅ Active |
 | [wechat](plugins/wechat/) | WeChat Official Account & WeCom (企业微信) channel support | ✅ Active |
 

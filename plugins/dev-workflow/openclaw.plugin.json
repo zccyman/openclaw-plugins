@@ -1,7 +1,6 @@
 {
   "id": "dev-workflow",
   "enabledByDefault": false,
-  "channels": ["dev-workflow"],
   "skills": ["./skills"],
   "configSchema": {
     "type": "object",

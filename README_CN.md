@@ -9,7 +9,7 @@ OpenClaw 插件集合 — 单一仓库中包含多个插件。
 | 插件 | 描述 | 状态 |
 |------|------|------|
 | [openharness](plugins/openharness/) | 116+ 工具统一插件：文件 I/O、Shell、搜索、Web、Git、GitHub、LSP、代码智能、MCP、会话、记忆、Swarm、REPL、成本跟踪等 | ✅ 活跃 |
-| [dev-workflow](plugins/dev-workflow/) | 规格驱动的 AI 开发工作流，多智能体编排 | ✅ 活跃 |
+| [dev-workflow](plugins/dev-workflow/) | 规格驱动的 AI 开发工作流，多智能体编排（跨频道：微信/飞书/QQ） | ✅ 活跃 |
 | [cross-platform-message-sync](plugins/cross-platform-message-sync/) | 跨平台消息同步（微信/QQ/飞书） | ✅ 活跃 |
 | [wechat](plugins/wechat/) | 微信公众号 & 企业微信频道支持 | ✅ 活跃 |
 
