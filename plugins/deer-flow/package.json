@@ -1,0 +1,55 @@
+{
+  "name": "@openclaw/deer-flow",
+  "version": "0.1.0",
+  "description": "DeerFlow super-agent capabilities as native OpenClaw tools",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./types": "./dist/types.js",
+    "./skills": "./dist/skills/index.js",
+    "./memory": "./dist/memory/index.js",
+    "./subagents": "./dist/subagents/index.js",
+    "./sandbox": "./dist/sandbox/index.js",
+    "./tools": "./dist/tools/index.js",
+    "./hooks": "./dist/hooks/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "oxlint src/"
+  },
+  "keywords": ["openclaw", "plugin", "deer-flow", "agent", "subagent", "memory", "skills"],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "openclaw": "file:../../openclaw",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.4.2"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
+    }
+  },
+  "openclaw": {
+    "extensions": [
+      "./src/index.ts"
+    ],
+    "setupEntry": "./setup-entry.ts",
+    "install": {
+      "npmSpec": "@openclaw/deer-flow",
+      "defaultChoice": "npm",
+      "minHostVersion": ">=2026.4.2"
+    },
+    "bundle": {
+      "stageRuntimeDependencies": true
+    }
+  }
+}

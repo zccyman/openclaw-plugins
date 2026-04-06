@@ -1,0 +1,32 @@
+{
+  "id": "deer-flow",
+  "enabledByDefault": false,
+  "skills": ["./skills"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "skillsPath": {
+        "type": "string",
+        "default": "skills",
+        "description": "Path to skills directory"
+      },
+      "maxMemoryFacts": {
+        "type": "number",
+        "default": 15,
+        "description": "Maximum memory facts to recall per prompt"
+      },
+      "sandboxMode": {
+        "type": "string",
+        "enum": ["local", "remote", "disabled"],
+        "default": "local",
+        "description": "Sandbox execution mode"
+      },
+      "sandboxBashEnabled": {
+        "type": "boolean",
+        "default": true,
+        "description": "Enable bash command execution in sandbox"
+      }
+    }
+  }
+}
