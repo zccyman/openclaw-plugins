@@ -2,57 +2,96 @@
 
 [中文文档](./README_CN.md)
 
-DeerFlow super-agent capabilities as native OpenClaw tools: sub-agent orchestration, long-term memory, skills system, and sandbox execution.
+DeerFlow super-agent capabilities as native OpenClaw tools: sub-agent orchestration, long-term memory, skills system, sandbox execution, and automatic context injection.
 
 ## Features
 
-- **Sub-Agent Orchestration** — Delegate complex tasks to specialized sub-agents with `delegate_task`
-- **Long-Term Memory** — Cross-session memory via `search_memory` and `remember` tools
-- **Skills System** — Load and manage SKILL.md-format skills with `load_skill` and `list_skills`
-- **Sandbox Execution** — Isolated code execution with virtual filesystem via `sandbox_exec`
-- **Context Engineering** — Automatic memory and skill injection into agent prompts
+### Tools
+| Tool | Description |
+|------|-------------|
+| `delegate_task` | Delegate complex tasks to specialized sub-agents |
+| `remember` | Store facts in long-term memory |
+| `search_memory` | Query cross-session memory |
+| `load_skill` | Load SKILL.md-format skills at runtime |
+| `list_skills` | List available skills |
+| `sandbox_exec` | Execute code in isolated environment with virtual filesystem |
+
+### Hooks (Automatic Context Injection)
+| Hook | Trigger | Action |
+|------|---------|--------|
+| `before_prompt_build` | Every prompt | Inject relevant memory facts and skill instructions |
+| `before_tool_call` | Tool execution | Guardrail: block dangerous commands (rm, fork bomb, etc.) |
+
+### Channels Compatibility
+- **WeChat** (微信) — via `openclaw-weixin`
+- **Feishu** (飞书) — via `feishu`  
+- **QQ** — via `qqbot`
+
+All tools and hooks work seamlessly across these channels.
 
 ## Installation
 
 ```bash
-# Clone the openclaw-plugins repository
-git clone https://github.com/openclaw/openclaw-plugins.git
+# Clone the repository
+git clone https://github.com/zccyman/openclaw-plugins.git
 cd openclaw-plugins
 
 # Install dependencies
-pnpm install
-
-# Build the deer-flow plugin
 cd plugins/deer-flow
+pnpm install
 pnpm build
+```
+
+### OpenClaw Setup
+
+```bash
+# Install plugin
+openclaw plugins install /path/to/openclaw-plugins/plugins/deer-flow
+
+# Add to config paths (if not auto-detected)
+# Edit ~/.openclaw/openclaw.json:
+# "plugins.load.paths": [..., "~/.openclaw/extensions/deer-flow"]
+
+# Restart gateway
+openclaw gateway restart
+
+# Enable plugin
+openclaw plugins enable deer-flow
 ```
 
 ## Configuration
 
-Add to your OpenClaw config:
-
 ```json
 {
   "plugins": {
-    "deer-flow": {
-      "skillsPath": "./skills",
-      "memoryEnabled": true,
-      "maxMemoryFacts": 15,
-      "defaultSubagentType": "general-purpose",
-      "sandboxMode": "local",
-      "sandboxBashEnabled": true
+    "entries": {
+      "deer-flow": {
+        "enabled": true,
+        "config": {
+          "skillsPath": "./skills",
+          "maxMemoryFacts": 15,
+          "sandboxMode": "local",
+          "sandboxBashEnabled": true
+        }
+      }
     }
   }
 }
 ```
 
+### Config Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `skillsPath` | string | `./skills` | Path to skills directory |
+| `maxMemoryFacts` | number | 15 | Max facts to recall per prompt |
+| `sandboxMode` | string | `local` | Execution mode: local/remote/disabled |
+| `sandboxBashEnabled` | boolean | true | Allow bash commands in sandbox |
+
 ## Usage
 
 ### Delegate Tasks
-
 ```
-Use the delegate_task tool to spawn a sub-agent:
-
 delegate_task(
   task="Research the latest TypeScript 5.8 features",
   subagent_type="research",
@@ -63,16 +102,15 @@ delegate_task(
 ```
 
 ### Memory
-
 ```
-Store facts:
+# Store facts
 remember(
-  content="User prefers TypeScript over JavaScript for all projects",
+  content="User prefers TypeScript over JavaScript",
   category="preference",
   confidence=0.9
 )
 
-Search memory:
+# Search memory
 search_memory(
   query="TypeScript preferences",
   category="preference",
@@ -81,24 +119,34 @@ search_memory(
 ```
 
 ### Skills
-
 ```
-List available skills:
+# List available skills
 list_skills()
 
-Load a specific skill:
+# Load a specific skill
 load_skill(name="frontend-design")
 ```
 
 ### Sandbox
-
 ```
-Execute commands in isolated environment:
 sandbox_exec(
   command="python3 -c 'print(2**10)'",
   working_dir="/mnt/user-data/workspace",
   timeout=30
 )
+```
+
+## Testing
+
+```bash
+# Run tests
+pnpm test
+
+# Run with coverage
+pnpm test --coverage
+
+# Type check
+pnpm typecheck
 ```
 
 ## Architecture
@@ -117,6 +165,8 @@ sandbox_exec(
 │  │  │  Orchestrator + Memory + Skills     ││ │
 │  │  └─────────────────────────────────────┘│ │
 │  └───────────────────────────────────────────┘ │
+│          ↑                           ↑           │
+│   before_prompt_build         before_tool_call │
 └─────────────────────────────────────────────────┘
 ```
 
