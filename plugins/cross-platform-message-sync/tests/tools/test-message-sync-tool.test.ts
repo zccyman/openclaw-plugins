@@ -40,4 +40,35 @@ describe("MessageSyncTool", () => {
       ]
     );
   });
+
+  it("should sync QQ reply message to other platforms", async () => {
+    const qqReplyMsg = JSON.stringify({
+      content: "[CQ:reply,id=67890]这是我的回复",
+      sender_name: "张三",
+      message: [
+        { type: "reply", data: { id: "67890" } },
+        { type: "text", data: { text: "这是我的回复" } },
+      ],
+      reply_content: "这是机器人的原始消息",
+      reply_sender: "AI助手",
+      timestamp: "15:30",
+      message_type: "text",
+    });
+
+    await tool.execute("call-qq-reply", {
+      raw_msg: qqReplyMsg,
+      source: "qqbot",
+      targets: ["feishu", "weixin"],
+    });
+
+    expect(runPythonScript).toHaveBeenCalledWith(
+      expect.any(String),
+      "unified_bridge.py",
+      [
+        "--source", "qqbot",
+        "--target", "feishu", "weixin",
+        "--msg", qqReplyMsg,
+      ]
+    );
+  });
 });

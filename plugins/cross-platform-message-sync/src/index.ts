@@ -9,7 +9,7 @@ import { registerHooks } from "./hooks/index.js";
  * `export default definePluginEntry(...)` results in:
  *   "missing register/activate export"
  */
-export function register(api) {
+export function register(api: any) {
   api.logger?.info?.("[cross-platform-message-sync] registering tools and hooks");
   registerTools(api);
   registerHooks(api);

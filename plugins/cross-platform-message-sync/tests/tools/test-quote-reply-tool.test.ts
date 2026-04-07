@@ -71,4 +71,17 @@ describe("QuoteReplyTool", () => {
     expect(callArgs).toContain("--topic-id");
     expect(callArgs).toContain("T001");
   });
+
+  it("should resolve topic from QQ CQ reply code", async () => {
+    const tool = new QuoteReplyTool();
+    await tool.execute("call-5", {
+      action: "resolve",
+      user_reply: "[CQ:reply,id=67890]这是我的回复",
+    });
+
+    const callArgs = runPythonScript.mock.calls[0][2];
+    expect(callArgs[0]).toBe("resolve");
+    expect(callArgs).toContain("--reply");
+    expect(callArgs).toContain("[CQ:reply,id=67890]这是我的回复");
+  });
 });

@@ -192,17 +192,76 @@ def parse_feishu_msg(raw: Dict[str, Any]) -> Dict[str, Any]:
     )
 
 
+def _extract_qq_reply(raw: Dict[str, Any]) -> Optional[str]:
+    reply_id = None
+    reply_text = None
+    reply_sender = None
+
+    message = raw.get("message")
+    if isinstance(message, list):
+        for seg in message:
+            if isinstance(seg, dict) and seg.get("type") == "reply":
+                reply_id = seg.get("data", {}).get("id")
+
+    if not reply_id:
+        content = raw.get("content", "")
+        cq_match = re.search(r"\[CQ:reply,id=(\d+)\]", content)
+        if cq_match:
+            reply_id = cq_match.group(1)
+
+    if not reply_id:
+        ref = raw.get("message_reference")
+        if isinstance(ref, dict):
+            reply_id = ref.get("message_id")
+
+    if not reply_id:
+        reply_id = raw.get("reply_to_id") or raw.get("upper_message_id")
+
+    reply_text = (
+        raw.get("reply_content")
+        or raw.get("quoted_content")
+        or raw.get("upper_content")
+        or ""
+    )
+    if isinstance(raw.get("reply_message"), dict):
+        reply_text = raw["reply_message"].get("content", reply_text)
+        reply_sender = raw["reply_message"].get("sender_name")
+
+    reply_sender = (
+        reply_sender or raw.get("reply_sender") or raw.get("quoted_sender") or ""
+    )
+
+    if not reply_id and not reply_text:
+        return None
+
+    if reply_text:
+        preview = reply_text[:80]
+        sender_prefix = f"[{reply_sender}] " if reply_sender else ""
+        suffix = "..." if len(reply_text) > 80 else ""
+        return f"[回复] {sender_prefix}{preview}{suffix}"
+    elif reply_id:
+        return f"[回复] msg:{reply_id}"
+
+    return None
+
+
 def parse_qq_msg(raw: Dict[str, Any]) -> Dict[str, Any]:
     type_map = {"图片": "image", "文件": "file", "语音": "voice", "视频": "video"}
     msg_type = type_map.get(raw.get("message_type", ""), "text")
 
+    content = raw.get("content", "")
+    reply_to = _extract_qq_reply(raw)
+
+    content = re.sub(r"\[CQ:reply,id=\d+\]\s*", "", content).strip()
+
     return normalize_message(
-        content=raw.get("content", ""),
+        content=content,
         sender_name=raw.get("sender_name", "Unknown"),
         source_platform="qq",
         timestamp=raw.get("timestamp"),
         msg_type=msg_type,
         mentions=raw.get("mentions", []),
+        reply_to=reply_to,
     )
 
 

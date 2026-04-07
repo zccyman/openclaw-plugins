@@ -91,6 +91,20 @@ def parse_reply_quote(raw_content: str) -> Dict[str, Any]:
             "user_reply": reply_at.group(2).strip(),
         }
 
+    cq_pattern = re.compile(r"\[CQ:reply,id=(\d+)\]\s*(.*)", re.DOTALL)
+    cq_match = cq_pattern.match(raw_content)
+    if cq_match:
+        return {
+            "has_quote": True,
+            "quote": {
+                "sender": "",
+                "timestamp": "",
+                "topic": "",
+                "original_text": f"[QQ回复] msg:{cq_match.group(1)}",
+            },
+            "user_reply": cq_match.group(2).strip(),
+        }
+
     return {
         "has_quote": False,
         "quote": None,
