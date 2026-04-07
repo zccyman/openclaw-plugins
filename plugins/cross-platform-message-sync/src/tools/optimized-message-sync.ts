@@ -1,83 +1,8 @@
 import { z } from "zod";
-import { readFileSync, existsSync, watchFile } from "fs";
 import type { AnyAgentTool } from "openclaw/plugin-sdk/core";
 import { recordSyncPerformance } from "./performance-monitor.js";
 
-// LRU Cache implementation for performance
-class LRUCache<T> {
-  private cache = new Map<string, T>();
-  private maxSize: number;
-
-  constructor(maxSize = 100) {
-    this.maxSize = maxSize;
-  }
-
-  get(key: string): T | undefined {
-    const value = this.cache.get(key);
-    if (value !== undefined) {
-      // Move to end (most recently used)
-      this.cache.delete(key);
-      this.cache.set(key, value);
-    }
-    return value;
-  }
-
-  set(key: string, value: T): void {
-    if (this.cache.has(key)) {
-      this.cache.delete(key);
-    } else if (this.cache.size >= this.maxSize) {
-      // Remove least recently used
-      const firstKey = this.cache.keys().next().value;
-      if (firstKey) {
-        this.cache.delete(firstKey);
-      }
-    }
-    this.cache.set(key, value);
-  }
-
-  clear(): void {
-    this.cache.clear();
-  }
-}
-
-// Pre-compiled regex patterns for performance
 const CODE_BLOCK_REGEX = /```(\w*)\n([\s\S]*?)```/g;
-const QUOTE_REGEX = /> \*\*引用自：\*\*.*?\n> 主题: (.*?)\n> 原文: (.*?)(?=\n|$)/s;
-
-// Cached configurations
-interface CachedConfig {
-  data: any;
-  timestamp: number;
-}
-
-class ConfigCache {
-  private cache = new LRUCache<CachedConfig>(10);
-  private watchers = new Map<string, boolean>();
-
-  getConfig(filePath: string): any {
-    const cached = this.cache.get(filePath);
-    if (cached && Date.now() - cached.timestamp < 30000) { // 30s cache
-      return cached.data;
-    }
-
-    if (existsSync(filePath)) {
-      const data = JSON.parse(readFileSync(filePath, 'utf8'));
-
-      // Set up file watcher if not already watching
-      if (!this.watchers.has(filePath)) {
-        watchFile(filePath, { interval: 5000 }, () => {
-          this.cache.set(filePath, { data: null as any, timestamp: 0 }); // Invalidate cache
-        });
-        this.watchers.set(filePath, true);
-      }
-
-      this.cache.set(filePath, { data, timestamp: Date.now() });
-      return data;
-    }
-
-    return null;
-  }
-}
 
 // Platform mappings
 const PLATFORM_LABELS = {

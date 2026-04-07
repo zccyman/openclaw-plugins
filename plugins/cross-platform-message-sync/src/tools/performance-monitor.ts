@@ -3,29 +3,22 @@ import type { AnyAgentTool } from "openclaw/plugin-sdk/core";
 
 // Performance metrics collector
 class PerformanceMetrics {
-  private metrics: {
-    syncLatency: number[];
-    throughput: number;
-    lastReset: number;
-    errors: number;
-  } = {
-    syncLatency: [],
-    throughput: 0,
-    lastReset: Date.now(),
-    errors: 0,
-  };
+  private static readonly RING_SIZE = 128;
+  private ring = new Float64Array(PerformanceMetrics.RING_SIZE);
+  private ringHead = 0;
+  private ringCount = 0;
+  private throughput = 0;
+  private lastReset = Date.now();
+  private errors = 0;
 
   recordSync(latencyMs: number, success: boolean = true): void {
-    this.metrics.syncLatency.push(latencyMs);
+    this.ring[this.ringHead] = latencyMs;
+    this.ringHead = (this.ringHead + 1) & (PerformanceMetrics.RING_SIZE - 1);
+    if (this.ringCount < PerformanceMetrics.RING_SIZE) this.ringCount++;
     if (success) {
-      this.metrics.throughput++;
+      this.throughput++;
     } else {
-      this.metrics.errors++;
-    }
-
-    // Keep only last 100 measurements
-    if (this.metrics.syncLatency.length > 100) {
-      this.metrics.syncLatency = this.metrics.syncLatency.slice(-100);
+      this.errors++;
     }
   }
 
@@ -37,38 +30,47 @@ class PerformanceMetrics {
     errorRate: number;
     uptime: number;
   } {
-    const latencies = this.metrics.syncLatency;
-    const uptime = Date.now() - this.metrics.lastReset;
+    const uptime = Date.now() - this.lastReset;
+    const n = this.ringCount;
 
-    if (latencies.length === 0) {
+    if (n === 0) {
       return {
         avgLatency: 0,
         maxLatency: 0,
         minLatency: 0,
-        throughput: this.metrics.throughput,
-        errorRate: this.metrics.errors / Math.max(this.metrics.throughput + this.metrics.errors, 1),
+        throughput: this.throughput,
+        errorRate: this.errors / Math.max(this.throughput + this.errors, 1),
         uptime,
       };
     }
 
-    const sum = latencies.reduce((a, b) => a + b, 0);
+    let sum = 0;
+    let min = Infinity;
+    let max = -Infinity;
+    for (let i = 0; i < n; i++) {
+      const v = this.ring[i];
+      sum += v;
+      if (v < min) min = v;
+      if (v > max) max = v;
+    }
+
     return {
-      avgLatency: sum / latencies.length,
-      maxLatency: Math.max(...latencies),
-      minLatency: Math.min(...latencies),
-      throughput: this.metrics.throughput,
-      errorRate: this.metrics.errors / Math.max(this.metrics.throughput + this.metrics.errors, 1),
+      avgLatency: sum / n,
+      maxLatency: max,
+      minLatency: min,
+      throughput: this.throughput,
+      errorRate: this.errors / Math.max(this.throughput + this.errors, 1),
       uptime,
     };
   }
 
   reset(): void {
-    this.metrics = {
-      syncLatency: [],
-      throughput: 0,
-      lastReset: Date.now(),
-      errors: 0,
-    };
+    this.ring.fill(0);
+    this.ringHead = 0;
+    this.ringCount = 0;
+    this.throughput = 0;
+    this.lastReset = Date.now();
+    this.errors = 0;
   }
 }
 

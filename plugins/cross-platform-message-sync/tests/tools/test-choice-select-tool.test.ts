@@ -1,111 +1,136 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-
-vi.mock("../../src/tools/python-runner.ts", () => ({
-  runPythonScript: vi.fn(),
-}));
+import { describe, it, expect } from "vitest";
 
 import { ChoiceSelectTool, ChoiceRenderTool } from "../../src/tools/choice-select-tool.ts";
 
 describe("ChoiceSelectTool", () => {
-  let runPythonScript: any;
-
-  beforeEach(async () => {
-    const mod = await import("../../src/tools/python-runner.ts");
-    runPythonScript = mod.runPythonScript as any;
-    vi.mocked(runPythonScript).mockClear();
-  });
-
   it("should have correct metadata", () => {
     const tool = new ChoiceSelectTool();
     expect(tool.name).toBe("choice_select");
     expect(tool.label).toBe("Choice Select");
   });
 
-  it("should parse single choice", async () => {
-    vi.mocked(runPythonScript).mockResolvedValue(
-      '{"selected":["A"],"confidence":"high","multi":false}'
-    );
+  it("should parse single letter choice", async () => {
     const tool = new ChoiceSelectTool();
     const result = await tool.execute("call-1", {
       reply_text: "A",
       expected_options: ["A", "B", "C"],
     });
 
-    const callArgs = runPythonScript.mock.calls[0][2];
-    expect(callArgs[0]).toBe("parse");
-    expect(callArgs).toContain("--reply");
-    expect(callArgs).toContain("--options");
     expect(result.content[0].text).toContain("Choice parsed");
+    const body = result.content[0].text.replace("📋 Choice parsed:\n", "");
+    const parsed = JSON.parse(body);
+    expect(parsed.selected).toEqual(["A"]);
+    expect(parsed.confidence).toBe("high");
   });
 
   it("should parse multi choice with separator", async () => {
-    vi.mocked(runPythonScript).mockResolvedValue(
-      '{"selected":["A","C"],"confidence":"high","multi":true}'
-    );
     const tool = new ChoiceSelectTool();
     const result = await tool.execute("call-2", {
       reply_text: "A和C",
       expected_options: ["A", "B", "C"],
     });
 
-    expect(result.content[0].text).toContain("Choice parsed");
-    expect(result.content[0].text).toContain('"multi":true');
+    const body = result.content[0].text.replace("📋 Choice parsed:\n", "");
+    const parsed = JSON.parse(body);
+    expect(parsed.selected).toEqual(["A", "C"]);
+    expect(parsed.multi).toBe(true);
   });
 
-  it("should parse range selection", async () => {
-    vi.mocked(runPythonScript).mockResolvedValue(
-      '{"selected":["A","B","C"],"confidence":"high","multi":true}'
-    );
+  it("should parse range selection A到C", async () => {
     const tool = new ChoiceSelectTool();
     const result = await tool.execute("call-3", {
       reply_text: "A到C",
       expected_options: ["A", "B", "C", "D"],
     });
 
-    expect(result.content[0].text).toContain("Choice parsed");
-    expect(result.content[0].text).toContain('"multi":true');
+    const body = result.content[0].text.replace("📋 Choice parsed:\n", "");
+    const parsed = JSON.parse(body);
+    expect(parsed.selected).toEqual(["A", "B", "C"]);
+    expect(parsed.multi).toBe(true);
+  });
+
+  it("should parse Chinese ordinal", async () => {
+    const tool = new ChoiceSelectTool();
+    const result = await tool.execute("call-4", {
+      reply_text: "第一和第三",
+      expected_options: ["1", "2", "3"],
+    });
+
+    const body = result.content[0].text.replace("📋 Choice parsed:\n", "");
+    const parsed = JSON.parse(body);
+    expect(parsed.selected).toEqual(["1", "3"]);
+    expect(parsed.multi).toBe(true);
+  });
+
+  it("should return error for unparseable input", async () => {
+    const tool = new ChoiceSelectTool();
+    const result = await tool.execute("call-5", {
+      reply_text: "xyzzy",
+      expected_options: ["A", "B", "C"],
+    });
+
+    expect(result.content[0].text).toContain("Could not parse choice");
+  });
+
+  it("should parse 'pick AB' as multi letter selection", async () => {
+    const tool = new ChoiceSelectTool();
+    const result = await tool.execute("call-6", {
+      reply_text: "pick AB",
+      expected_options: ["A", "B", "C"],
+    });
+
+    const body = result.content[0].text.replace("📋 Choice parsed:\n", "");
+    const parsed = JSON.parse(body);
+    expect(parsed.selected).toEqual(["A", "B"]);
+    expect(parsed.multi).toBe(true);
   });
 });
 
 describe("ChoiceRenderTool", () => {
-  let runPythonScript: any;
-
-  beforeEach(async () => {
-    const mod = await import("../../src/tools/python-runner.ts");
-    runPythonScript = mod.runPythonScript as any;
-    vi.mocked(runPythonScript).mockClear();
-    vi.mocked(runPythonScript).mockResolvedValue('rendered options output');
-  });
-
   it("should have correct metadata", () => {
     const tool = new ChoiceRenderTool();
     expect(tool.name).toBe("choice_render");
     expect(tool.label).toBe("Choice Render");
   });
 
-  it("should render options for feishu", async () => {
+  it("should render options for feishu with click hint", async () => {
     const tool = new ChoiceRenderTool();
-    await tool.execute("call-4", {
+    const result = await tool.execute("call-4", {
       content: "A. 金融\nB. 半导体",
       platform: "feishu",
     });
 
-    const callArgs = runPythonScript.mock.calls[0][2];
-    expect(callArgs[0]).toBe("render");
-    expect(callArgs).toContain("--platform");
-    expect(callArgs).toContain("feishu");
+    expect(result.content[0].text).toContain("Options rendered for feishu");
+    expect(result.content[0].text).toContain("点击对应选项");
   });
 
   it("should render 3+ options with multi-select hint", async () => {
-    vi.mocked(runPythonScript).mockResolvedValue(
-      'rendered with 可多选 hint'
-    );
     const tool = new ChoiceRenderTool();
     const result = await tool.execute("call-5", {
       content: "A. 金融\nB. 半导体\nC. 新能源",
       platform: "feishu",
     });
 
-    expect(result.content[0].text).toContain("Options rendered");
+    expect(result.content[0].text).toContain("可多选");
+  });
+
+  it("should render options for weixin with reply hint", async () => {
+    const tool = new ChoiceRenderTool();
+    const result = await tool.execute("call-6", {
+      content: "1. 选项1\n2. 选项2",
+      platform: "weixin",
+    });
+
+    expect(result.content[0].text).toContain("请回复选项编号");
+  });
+
+  it("should render options for qq", async () => {
+    const tool = new ChoiceRenderTool();
+    const result = await tool.execute("call-7", {
+      content: "A. 红色\nB. 蓝色",
+      platform: "qqbot",
+    });
+
+    expect(result.content[0].text).toContain("发送选项编号");
   });
 });
