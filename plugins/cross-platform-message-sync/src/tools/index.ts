@@ -1,4 +1,5 @@
-import { MessageSyncTool } from "./message-sync-tool.js";
+import { OptimizedMessageSyncTool } from "./optimized-message-sync.js";
+import { PerformanceMonitorTool } from "./performance-monitor.js";
 import {
   PromptHistoryListTool,
   PromptHistorySearchTool,
@@ -11,7 +12,11 @@ import { QuoteReplyTool } from "./quote-reply-tool.js";
 import { ChoiceSelectTool, ChoiceRenderTool } from "./choice-select-tool.js";
 
 export function registerTools(api: any) {
-  api.registerTool(new MessageSyncTool());
+  // Use optimized message sync tool for better performance
+  api.registerTool(new OptimizedMessageSyncTool());
+  api.registerTool(new PerformanceMonitorTool());
+
+  // Keep existing tools for compatibility
   api.registerTool(new PromptHistoryListTool());
   api.registerTool(new PromptHistorySearchTool());
   api.registerTool(new PromptHistoryGetTool());
