@@ -3,7 +3,7 @@ export interface DevWorkflowAccount {
   enabled: boolean;
 }
 
-export type WorkflowMode = "quick" | "standard" | "full";
+export type WorkflowMode = "quick" | "standard" | "full" | "debug";
 export type WorkflowStep =
   | "step0-analysis"
   | "step0.1-handover"
@@ -21,9 +21,33 @@ export type WorkflowStep =
   | "step8.5-github"
   | "step8.6-tag-release"
   | "step9-delivery"
-  | "step9.5-handover-cleanup";
+  | "step9.5-handover-cleanup"
+  | "step6.5-security-audit"
+  | "step10-retro"
+  | "step10.5-experience";
 
 export type TaskStatus = "pending" | "in_progress" | "completed" | "cancelled" | "failed";
+export type TaskGranularity = "feature" | "task" | "subtask";
+export type GateType = "lint" | "boundary" | "unit_test" | "integration" | "performance";
+export type GateStatus = "pending" | "passed" | "failed" | "skipped";
+
+export interface SubTask {
+  id: string;
+  parentTaskId: string;
+  title: string;
+  description: string;
+  status: TaskStatus;
+  suggestedModel: string;
+  maxLines: number;
+  gates: GateResult[];
+}
+
+export interface GateResult {
+  type: GateType;
+  status: GateStatus;
+  output?: string;
+  checkedAt?: string;
+}
 export type ShipCategory = "ship" | "show" | "ask";
 export type DifficultyLevel = "easy" | "medium" | "hard";
 
@@ -37,6 +61,11 @@ export interface WorkflowTask {
   dependencies: string[];
   files: string[];
   shipCategory: ShipCategory;
+  granularity: TaskGranularity;
+  suggestedModel: string;
+  maxLines: number;
+  subtasks: SubTask[];
+  gates: GateResult[];
 }
 
 export interface WorkflowSpec {
@@ -60,6 +89,7 @@ export interface WorkflowContext {
   openSource: boolean | null;
   branchName: string | null;
   featureFlags: FeatureFlags;
+  taskRouting?: Record<string, { complexity: string; tool: string; model: string }>;
 }
 
 export interface QAGateCheck {
@@ -118,6 +148,13 @@ export interface FeatureFlags {
   maxFileLines: number;
   maxFunctionLines: number;
   modelOverride: Record<string, string>;
+  subtaskGatesEnabled: boolean;
+  subtaskMaxLines: number;
+  taskMaxLines: number;
+  tmuxForLongTasks: boolean;
+  tmuxTimeoutSeconds: number;
+  noProxyLocalhost: boolean;
+  readmeDualLanguage: boolean;
 }
 
 export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
@@ -133,11 +170,19 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   maxFileLines: 500,
   maxFunctionLines: 50,
   modelOverride: {},
+  subtaskGatesEnabled: true,
+  subtaskMaxLines: 50,
+  taskMaxLines: 200,
+  tmuxForLongTasks: true,
+  tmuxTimeoutSeconds: 30,
+  noProxyLocalhost: true,
+  readmeDualLanguage: true,
 };
 
 export interface WorkflowConfig {
   mode: WorkflowMode;
   featureFlags: FeatureFlags;
+  taskRouting?: Record<string, { complexity: string; tool: string; model: string }>;
   projectDir: string;
 }
 
@@ -187,3 +232,24 @@ export const DEV_WORKFLOW_RULES: Record<DevWorkflowRule, { description: string; 
   "no-global-mutation": { description: "Avoid mutating global state", severity: "error" },
   "prefer-pure-functions": { description: "Prefer pure functions over side-effecting ones", severity: "warning" },
 };
+
+/**
+ * v6: Normalize a task object to ensure all v6 fields are present.
+ * Handles tasks loaded from external sources (OpenSpec/Kilocode) that may lack v6 fields.
+ */
+export function normalizeTask(task: Partial<WorkflowTask> & Pick<WorkflowTask, "id" | "title" | "description">): WorkflowTask {
+  return {
+    status: "pending",
+    difficulty: "medium",
+    estimatedMinutes: 30,
+    dependencies: [],
+    files: [],
+    shipCategory: "ship",
+    granularity: "task",
+    suggestedModel: "minimax/MiniMax-M2.7",
+    maxLines: 200,
+    subtasks: [],
+    gates: [],
+    ...task,
+  };
+}

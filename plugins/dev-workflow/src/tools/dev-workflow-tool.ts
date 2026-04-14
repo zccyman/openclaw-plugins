@@ -23,7 +23,14 @@ export class DevWorkflowTool implements AnyAgentTool {
       coverageThreshold: z.number().optional(),
       maxFileLines: z.number().optional(),
       maxFunctionLines: z.number().optional(),
-    }).optional().describe("Optional feature flag overrides"),
+      subtaskGatesEnabled: z.boolean().optional(),
+      subtaskMaxLines: z.number().optional(),
+      taskMaxLines: z.number().optional(),
+      tmuxForLongTasks: z.boolean().optional(),
+      tmuxTimeoutSeconds: z.number().optional(),
+      noProxyLocalhost: z.boolean().optional(),
+      readmeDualLanguage: z.boolean().optional(),
+    }).optional().describe("Optional feature flag overrides (v6: subtask gates, tmux, dual README)"),
   });
 
   async execute(_toolCallId: string, input: z.infer<typeof this.parameters>) {

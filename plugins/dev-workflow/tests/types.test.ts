@@ -14,8 +14,13 @@ import type {
   BrainstormOption,
   FeatureFlags,
   DevWorkflowRule,
+  SubTask,
+  GateResult,
+  TaskGranularity,
+  GateType,
+  GateStatus,
 } from "../src/types.js";
-import { DEFAULT_FEATURE_FLAGS, DEV_WORKFLOW_RULES } from "../src/types.js";
+import { DEFAULT_FEATURE_FLAGS, DEV_WORKFLOW_RULES, normalizeTask } from "../src/types.js";
 
 describe("types", () => {
   it("DevWorkflowAccount has required fields", () => {
@@ -73,9 +78,16 @@ describe("types", () => {
       dependencies: [],
       files: ["src/index.ts"],
       shipCategory: "show",
+      granularity: "task",
+      suggestedModel: "minimax/MiniMax-M2.7",
+      maxLines: 200,
+      subtasks: [],
+      gates: [],
     };
     expect(task.id).toBe("task-1");
     expect(task.dependencies).toEqual([]);
+    expect(task.granularity).toBe("task");
+    expect(task.subtasks).toEqual([]);
   });
 
   it("WorkflowSpec has proposal, design, tasks, updatedAt", () => {
@@ -153,6 +165,12 @@ describe("types", () => {
     expect(flags.coverageThreshold).toBe(80);
     expect(flags.maxFileLines).toBe(500);
     expect(flags.maxFunctionLines).toBe(50);
+    expect(flags.subtaskGatesEnabled).toBe(true);
+    expect(flags.subtaskMaxLines).toBe(50);
+    expect(flags.taskMaxLines).toBe(200);
+    expect(flags.tmuxForLongTasks).toBe(true);
+    expect(flags.noProxyLocalhost).toBe(true);
+    expect(flags.readmeDualLanguage).toBe(true);
   });
 
   it("FeatureFlags can be partially overridden", () => {
@@ -187,5 +205,72 @@ describe("types", () => {
     for (const r of rules) {
       expect(DEV_WORKFLOW_RULES[r]).toBeDefined();
     }
+  });
+
+  // v6 tests
+  it("TaskGranularity has feature/task/subtask", () => {
+    const levels: TaskGranularity[] = ["feature", "task", "subtask"];
+    expect(levels).toHaveLength(3);
+  });
+
+  it("GateType has 5 gate types", () => {
+    const gates: GateType[] = ["lint", "boundary", "unit_test", "integration", "performance"];
+    expect(gates).toHaveLength(5);
+  });
+
+  it("GateStatus has all states", () => {
+    const statuses: GateStatus[] = ["pending", "passed", "failed", "skipped"];
+    expect(statuses).toHaveLength(4);
+  });
+
+  it("SubTask has all required fields", () => {
+    const subtask: SubTask = {
+      id: "st-1.1",
+      parentTaskId: "task-1",
+      title: "Define types",
+      description: "Define interfaces",
+      status: "pending",
+      suggestedModel: "minimax/MiniMax-M2.7",
+      maxLines: 50,
+      gates: [],
+    };
+    expect(subtask.id).toBe("st-1.1");
+    expect(subtask.maxLines).toBe(50);
+  });
+
+  it("GateResult has type, status, optional output", () => {
+    const gate: GateResult = { type: "lint", status: "passed" };
+    expect(gate.output).toBeUndefined();
+    const failedGate: GateResult = { type: "boundary", status: "failed", output: "Missing null check" };
+    expect(failedGate.output).toBe("Missing null check");
+  });
+
+  it("normalizeTask fills v6 defaults for partial task", () => {
+    const task = normalizeTask({
+      id: "task-new",
+      title: "New Task",
+      description: "A new task",
+    });
+    expect(task.granularity).toBe("task");
+    expect(task.suggestedModel).toBe("minimax/MiniMax-M2.7");
+    expect(task.maxLines).toBe(200);
+    expect(task.subtasks).toEqual([]);
+    expect(task.gates).toEqual([]);
+    expect(task.status).toBe("pending");
+    expect(task.difficulty).toBe("medium");
+  });
+
+  it("normalizeTask preserves existing values", () => {
+    const task = normalizeTask({
+      id: "task-override",
+      title: "Override Task",
+      description: "Override test",
+      granularity: "feature",
+      suggestedModel: "zai/GLM-5.1",
+      maxLines: 500,
+    });
+    expect(task.granularity).toBe("feature");
+    expect(task.suggestedModel).toBe("zai/GLM-5.1");
+    expect(task.maxLines).toBe(500);
   });
 });

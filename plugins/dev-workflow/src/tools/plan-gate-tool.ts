@@ -59,7 +59,7 @@ export class PlanGateTool implements AnyAgentTool {
 
     for (const task of tasks) {
       if (task.status === "pending") {
-        executionOrder.push(`${task.id}: ${task.title} [${task.difficulty}, ~${task.estimatedMinutes}min]`);
+        executionOrder.push(`${task.id}: ${task.title} [${task.difficulty}, ${task.granularity ?? "task"}, ~${task.estimatedMinutes}min]`);
         for (const file of task.files) {
           if (file.includes("test") || file.includes("spec")) {
             filesToCreate.push(file);

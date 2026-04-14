@@ -49,7 +49,7 @@ describe("plugin entry point", () => {
 
   it("exports named exports", async () => {
     const mod = await import("../src/index.js");
-    expect(mod.devWorkflowChannel).toBeDefined();
+    // v6: devWorkflowChannel removed (now using defineChannelPluginEntry)
     expect(mod.setDevWorkflowRuntime).toBeDefined();
     expect(mod.DevWorkflowEngine).toBeDefined();
     expect(mod.AgentOrchestrator).toBeDefined();

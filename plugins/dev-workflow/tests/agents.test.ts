@@ -313,16 +313,16 @@ describe("selectModel", () => {
     expect(orchestrator.selectModel("reviewer", "quick")).toBe("glm-5.1");
   });
 
-  it("quick mode: uses minimax-m2.5 for brainstorm", () => {
-    expect(orchestrator.selectModel("brainstorm", "quick")).toBe("minimax-m2.5");
+  it("quick mode: brainstorm=lightweight→llama-3.3-70b", () => {
+    expect(orchestrator.selectModel("brainstorm", "quick")).toBe("llama-3.3-70b"); // v6: brainstorm=lightweight→llama
   });
 
-  it("standard mode: uses minimax-m2.5 for coder by default", () => {
-    expect(orchestrator.selectModel("coder", "standard")).toBe("minimax-m2.5");
+  it("standard mode: coder=standard→qwen3.6-plus", () => {
+    expect(orchestrator.selectModel("coder", "standard")).toBe("qwen3.6-plus"); // v6: coder=standard→qwen3.6-plus
   });
 
-  it("standard mode: uses glm-5.1 for qa", () => {
-    expect(orchestrator.selectModel("qa", "standard")).toBe("glm-5.1");
+  it("standard mode: qa=advanced→glm-5.1", () => {
+    expect(orchestrator.selectModel("qa", "standard")).toBe("glm-5.1"); // v6: qa=advanced→glm-5.1
   });
 
   it("full mode: uses glm-5.1 for spec", () => {
@@ -333,16 +333,16 @@ describe("selectModel", () => {
     expect(orchestrator.selectModel("coder", "full")).toBe("glm-5.1");
   });
 
-  it("full mode: uses minimax-m2.5 for docs", () => {
-    expect(orchestrator.selectModel("docs", "full")).toBe("minimax-m2.5");
+  it("full mode: docs=lightweight→llama-3.3-70b", () => {
+    expect(orchestrator.selectModel("docs", "full")).toBe("llama-3.3-70b"); // v6: docs=lightweight→llama
   });
 
   it("coder with hard difficulty upgrades to glm-5.1", () => {
     expect(orchestrator.selectModel("coder", "standard", "hard")).toBe("glm-5.1");
   });
 
-  it("coder with extreme difficulty upgrades to qwen3-coder-480b", () => {
-    expect(orchestrator.selectModel("coder", "quick", "extreme")).toBe("qwen3-coder-480b");
+  it("coder with extreme difficulty upgrades to critical→glm-5.1", () => {
+    expect(orchestrator.selectModel("coder", "quick", "extreme")).toBe("glm-5.1"); // v6: extreme→critical→glm-5.1
   });
 
   it("modelOverride takes highest priority", () => {
@@ -353,7 +353,7 @@ describe("selectModel", () => {
     expect(orchestrator.selectModel("brainstorm", "quick", undefined, { brainstorm: "glm-5.1" })).toBe("glm-5.1");
   });
 
-  it("unknown role falls back to minimax-m2.5", () => {
-    expect(orchestrator.selectModel("unknown-role", "quick")).toBe("minimax-m2.5");
+  it("unknown role falls back to standard→qwen3.6-plus", () => {
+    expect(orchestrator.selectModel("unknown-role", "quick")).toBe("qwen3.6-plus"); // v6: unknown→standard→qwen3.6-plus
   });
 });

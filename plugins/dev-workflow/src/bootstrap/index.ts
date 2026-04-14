@@ -1,5 +1,6 @@
 import type { PluginRuntime } from "openclaw/plugin-sdk/core";
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
+import type { WorkflowMode } from "../types.js";
 import { join } from "path";
 import { exec } from "child_process";
 import { promisify } from "util";
@@ -11,7 +12,7 @@ const execAsync = promisify(exec);
 export interface BootstrapReport {
   checks: BootstrapCheck[];
   techStack: TechStackInfo;
-  projectType: "quick" | "standard" | "full";
+  projectType: WorkflowMode;
   suggestions: string[];
 }
 
@@ -39,7 +40,7 @@ export class BootstrapManager {
     this.templateManager = new DirectoryTemplateManager(runtime);
   }
 
-  async bootstrap(projectDir: string, mode: "quick" | "standard" | "full" = "standard"): Promise<BootstrapReport> {
+  async bootstrap(projectDir: string, mode: WorkflowMode = "standard"): Promise<BootstrapReport> {
     const logger = this.runtime.logging.getChildLogger({ level: "info" });
     logger.info(`[BootstrapManager] Bootstrapping project in ${projectDir} (mode: ${mode})`);
 

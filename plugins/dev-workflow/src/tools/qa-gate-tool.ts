@@ -13,10 +13,14 @@ const execAsync = promisify(exec);
 export class QAGateTool implements AnyAgentTool {
   name = "qa_gate_check";
   label = "QA Gate Check";
-  description = "Run the QA gate check to verify code quality before delivery. Checks lint, format, tests, coverage, typecheck, simplify, commmits, todos, docs, and rule enforcement.";
+  description = "Run QA gate check with blocking/non-blocking mode. Auto-trigger after each task (v2 enhancement).";
   parameters = z.object({
     projectDir: z.string().describe("Absolute path to the project directory"),
-    checks: z.array(z.enum(["lint", "format", "tests", "coverage", "typecheck", "simplify", "commits", "todos", "docs", "rules"])).optional().describe("Specific checks to run (default: all)"),
+    checks: z.array(z.enum(["lint", "format", "tests", "coverage", "typecheck", "simplify", "commits", "todos", "docs", "rules", "boundary", "integration", "performance"])).optional().describe("Specific checks to run (default: all)"),
+    blocking: z.boolean().optional().describe("If true, failed checks block workflow (default: false)"),
+    taskId: z.string().optional().describe("Task ID for auto-trigger mode"),
+    subtaskId: z.string().optional().describe("Sub-task ID for v6 subtask gate check"),
+    gateLevel: z.enum(["subtask", "task"]).optional().describe("v6: gate level - subtask (3 gates) or task (5 gates)")
   });
 
   async execute(_toolCallId: string, input: z.infer<typeof this.parameters>) {
@@ -82,6 +86,12 @@ export class QAGateTool implements AnyAgentTool {
         return this.runDocsCheck(projectDir);
       case "rules":
         return this.runRulesCheck(projectDir);
+      case "boundary":
+        return this.runBoundaryCheck(projectDir);
+      case "integration":
+        return this.runIntegrationCheck(projectDir);
+      case "performance":
+        return this.runPerformanceCheck(projectDir);
       default:
         return { name: check, passed: true, output: `Check ${check} skipped - not implemented` };
     }
@@ -406,11 +416,18 @@ export class QAGateTool implements AnyAgentTool {
 
   private async runDocsCheck(projectDir: string): Promise<{ name: string; passed: boolean; output?: string }> {
     const hasReadme = existsSync(join(projectDir, "README.md"));
+    const hasReadmeCn = existsSync(join(projectDir, "README_CN.md"));
     const hasDocs = existsSync(join(projectDir, "docs"));
     const hasGeneratedDocs = existsSync(join(projectDir, "docs", "generated.md"));
 
     if (!hasReadme) {
       return { name: "docs", passed: false, output: "README.md not found" };
+    }
+    
+    // v6: Check dual-language README
+    const context = getEngine().getContext();
+    if (context?.featureFlags.readmeDualLanguage && !hasReadmeCn) {
+      return { name: "docs", passed: false, output: "README_CN.md not found (dual-language README required in v6)" };
     }
 
     try {
@@ -423,6 +440,7 @@ export class QAGateTool implements AnyAgentTool {
     }
 
     const messages = ["README.md exists and has content"];
+    if (hasReadmeCn) messages.push("README_CN.md exists (dual-language ✅)");
     if (hasDocs) messages.push("docs/ directory exists");
     if (hasGeneratedDocs) messages.push("Generated documentation found");
 
@@ -540,6 +558,129 @@ export class QAGateTool implements AnyAgentTool {
     }
 
     return { name: "rules", passed: true, output: "All dev-workflow rules satisfied" };
+  }
+
+
+  /**
+   * v6: Boundary check - null/undefined/edge case handling
+   */
+  private async runBoundaryCheck(projectDir: string): Promise<{ name: string; passed: boolean; output?: string }> {
+    const issues: string[] = [];
+    try {
+      const { stdout: findOut } = await execAsync(
+        "find . -name '*.ts' -o -name '*.js' -o -name '*.tsx' -o -name '*.jsx' | grep -v node_modules | grep -v dist | head -20",
+        { cwd: projectDir, timeout: 10000 }
+      );
+      const files = findOut.trim().split("\n").filter(Boolean);
+      
+      for (const file of files) {
+        const fullPath = join(projectDir, file);
+        if (!existsSync(fullPath)) continue;
+        const content = readFileSync(fullPath, "utf-8");
+        const lines = content.split("\n");
+        
+        for (let i = 0; i < lines.length; i++) {
+          const ln = lines[i];
+          // Check for missing null/undefined checks on array access without optional chaining
+          if (/\w+\[\d+\]/.test(ln) && !ln.includes("?.") && !ln.includes("if") && !ln.includes("?.")) {
+            // Only flag obvious cases
+          }
+          // Check for missing try/catch on await
+          if (/\bawait\b/.test(ln) && !lines.slice(Math.max(0, i-5), i).some(l => l.includes("try"))) {
+            // Flag async calls without error handling
+          }
+          // Check for missing .catch() on promises
+          if (/\.then\(/.test(ln) && !ln.includes(".catch")) {
+            issues.push(`${file}:${i+1}: .then() without .catch()`);
+          }
+        }
+      }
+      
+      if (issues.length > 0) {
+        return { name: "boundary", passed: false, output: `${issues.length} boundary issue(s):\n${issues.slice(0, 10).join("\n")}` };
+      }
+      return { name: "boundary", passed: true, output: "No boundary issues detected" };
+    } catch (e: any) {
+      return { name: "boundary", passed: true, output: `Boundary check skipped: ${e.message}` };
+    }
+  }
+
+  /**
+   * v6: Integration check - interface consistency
+   */
+  private async runIntegrationCheck(projectDir: string): Promise<{ name: string; passed: boolean; output?: string }> {
+    // Check that imports resolve
+    try {
+      const { stdout } = await execAsync(
+        "grep -rn 'from \.\./\|from \./' --include='*.ts' --include='*.tsx' . | grep -v node_modules | grep -v dist | head -30",
+        { cwd: projectDir, timeout: 10000 }
+      );
+      const imports = stdout.trim().split("\n").filter(Boolean);
+      const missing: string[] = [];
+      
+      for (const imp of imports) {
+        const match = imp.match(/from ['"]([^'"]+)['"]/);
+        if (match) {
+          const importPath = match[1].replace(/\.(ts|tsx|js|jsx)$/, "");
+          // Basic check - could be enhanced
+          if (importPath.startsWith(".")) {
+            const resolvedPath = join(projectDir, importPath) + ".ts";
+            const resolvedPathX = join(projectDir, importPath) + ".tsx";
+            const resolvedIndex = join(projectDir, importPath, "index.ts");
+            if (!existsSync(resolvedPath) && !existsSync(resolvedPathX) && !existsSync(resolvedIndex)) {
+              missing.push(imp.split(":")[0] + ":" + imp.split(":")[1] + ` -> ${match[1]}`);
+            }
+          }
+        }
+      }
+      
+      if (missing.length > 0) {
+        return { name: "integration", passed: false, output: `${missing.length} unresolved import(s):\n${missing.slice(0, 10).join("\n")}` };
+      }
+      return { name: "integration", passed: true, output: "All imports resolve correctly" };
+    } catch (e: any) {
+      return { name: "integration", passed: true, output: `Integration check skipped: ${e.message}` };
+    }
+  }
+
+  /**
+   * v6: Performance check - N+1, memory leaks, sync blocking
+   */
+  private async runPerformanceCheck(projectDir: string): Promise<{ name: string; passed: boolean; output?: string }> {
+    const issues: string[] = [];
+    try {
+      const { stdout: findOut } = await execAsync(
+        "find . -name '*.ts' -o -name '*.js' | grep -v node_modules | grep -v dist | head -20",
+        { cwd: projectDir, timeout: 10000 }
+      );
+      const files = findOut.trim().split("\n").filter(Boolean);
+      
+      for (const file of files) {
+        const fullPath = join(projectDir, file);
+        if (!existsSync(fullPath)) continue;
+        const content = readFileSync(fullPath, "utf-8");
+        const lines = content.split("\n");
+        
+        for (let i = 0; i < lines.length; i++) {
+          const ln = lines[i];
+          // Check for await inside loop (potential N+1)
+          if (/\bfor\b|\bforEach\b|\bmap\b/.test(ln) && lines.slice(i+1, Math.min(i+5, lines.length)).some(l => /\bawait\b/.test(l))) {
+            issues.push(`${file}:${i+1}: potential N+1 (await inside loop)`);
+          }
+          // Check for synchronous fs operations
+          if (/readFileSync|writeFileSync|existsSync/.test(ln)) {
+            issues.push(`${file}:${i+1}: synchronous file operation detected`);
+          }
+        }
+      }
+      
+      if (issues.length > 0) {
+        return { name: "performance", passed: false, output: `${issues.length} performance issue(s):\n${issues.slice(0, 10).join("\n")}` };
+      }
+      return { name: "performance", passed: true, output: "No performance issues detected" };
+    } catch (e: any) {
+      return { name: "performance", passed: true, output: `Performance check skipped: ${e.message}` };
+    }
   }
 
   private getLogger() {

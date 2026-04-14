@@ -34,7 +34,7 @@ export class SpecViewTool implements AnyAgentTool {
       text = spec.design;
       details = { success: true, design: spec.design };
     } else if (section === "tasks") {
-      text = spec.tasks.map((t) => `- [${t.status === "completed" ? "x" : " "}] **${t.id}**: ${t.title} (${t.difficulty}, ~${t.estimatedMinutes}min)`).join("\n");
+      text = spec.tasks.map((t) => `- [${t.status === "completed" ? "x" : " "}] **${t.id}**: ${t.title} (${t.difficulty}, ${t.granularity ?? "task"}, ~${t.estimatedMinutes}min, model: ${t.suggestedModel ?? "auto"})`).join("\n");
       details = {
         success: true,
         tasks: spec.tasks.map((t) => ({
@@ -44,6 +44,9 @@ export class SpecViewTool implements AnyAgentTool {
           difficulty: t.difficulty,
           estimatedMinutes: t.estimatedMinutes,
           dependencies: t.dependencies,
+          granularity: t.granularity ?? "task",
+          suggestedModel: t.suggestedModel ?? "auto",
+          subtasksCount: t.subtasks?.length ?? 0,
         })),
       };
     } else {
@@ -59,6 +62,9 @@ export class SpecViewTool implements AnyAgentTool {
           difficulty: t.difficulty,
           estimatedMinutes: t.estimatedMinutes,
           dependencies: t.dependencies,
+          granularity: t.granularity ?? "task",
+          suggestedModel: t.suggestedModel ?? "auto",
+          subtasksCount: t.subtasks?.length ?? 0,
         })),
         updatedAt: spec.updatedAt,
       };
