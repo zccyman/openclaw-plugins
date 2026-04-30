@@ -317,8 +317,8 @@ describe("selectModel", () => {
     expect(orchestrator.selectModel("brainstorm", "quick")).toBe("llama-3.3-70b"); // v6: brainstorm=lightweight→llama
   });
 
-  it("standard mode: coder=standard→qwen3.6-plus", () => {
-    expect(orchestrator.selectModel("coder", "standard")).toBe("minimax-m2.7"); // v6: coder=standard→qwen3.6-plus
+  it("standard mode: coder=standard→MiniMax-M2.7", () => {
+    expect(orchestrator.selectModel("coder", "standard")).toBe("minimax-m2.7"); // v6: coder=standard→MiniMax-M2.7
   });
 
   it("standard mode: qa=advanced→glm-5.1", () => {
@@ -353,7 +353,7 @@ describe("selectModel", () => {
     expect(orchestrator.selectModel("brainstorm", "quick", undefined, { brainstorm: "glm-5.1" })).toBe("glm-5.1");
   });
 
-  it("unknown role falls back to standard→qwen3.6-plus", () => {
-    expect(orchestrator.selectModel("unknown-role", "quick")).toBe("minimax-m2.7"); // v6: unknown→standard→qwen3.6-plus
+  it("unknown role falls back to standard→MiniMax-M2.7", () => {
+    expect(orchestrator.selectModel("unknown-role", "quick")).toBe("minimax-m2.7"); // v6: unknown→standard→MiniMax-M2.7
   });
 });

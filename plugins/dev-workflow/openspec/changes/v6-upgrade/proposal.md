@@ -5,14 +5,14 @@
 ## 背景
 
 dev-workflow v5 已稳定运行，但经过实际使用发现两个核心问题：
-1. **Task 粒度过粗** — 免费小模型（Qwen 3.6/MiniMax M2.5）处理一个 Task（200+行）容易出错
+1. **Task 粒度过粗** — 免费小模型（MiniMax M2.7/MiniMax M2.5）处理一个 Task（200+行）容易出错
 2. **质量门控薄弱** — 问题累积到 Step 6 Review 才发现，修复成本高
 
 ## 目标
 
 ### 功能1：三级任务粒度体系
 - **Feature**（>200行）→ 付费模型（GLM-5.1）
-- **Task**（50-200行）→ 免费中模型（Qwen 3.6）
+- **Task**（50-200行）→ 免费中模型（MiniMax M2.7）
 - **Sub-task**（≤50行）→ 免费小模型（MiniMax M2.5/Llama 3.3）
 - tasks.md 格式增加 Sub-task 层级
 - 每个 Sub-task 只改一个函数/一个小功能

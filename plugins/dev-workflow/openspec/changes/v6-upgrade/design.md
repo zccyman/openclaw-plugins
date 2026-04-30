@@ -12,12 +12,12 @@
 ```markdown
 ## Feature: Model Arena 模块（>200行，GLM-5.1）
 
-### Task 1: 后端模型分组（50-200行，Qwen 3.6）
+### Task 1: 后端模型分组（50-200行，MiniMax M2.7）
 - Sub-task 1.1: 定义 NVIDIA_PROVIDERS 常量（≤50行，MiniMax M2.5）
 - Sub-task 1.2: 实现 load_models() 函数（≤50行，MiniMax M2.5）
 - Sub-task 1.3: 实现 GET /models 端点（≤50行，MiniMax M2.5）
 
-### Task 2: 前端 ModelGroupSelector（50-200行，Qwen 3.6）
+### Task 2: 前端 ModelGroupSelector（50-200行，MiniMax M2.7）
 - Sub-task 2.1: 组件骨架 + props 定义（≤50行，MiniMax M2.5）
 - Sub-task 2.2: 全选/取消逻辑（≤50行，MiniMax M2.5）
 - Sub-task 2.3: 样式和交互细节（≤50行，MiniMax M2.5）
@@ -27,7 +27,7 @@
 | 层级 | 代码量 | 模型 | 说明 |
 |------|--------|------|------|
 | Feature | >200行 | GLM-5.1 / Kimi K2.5 | 架构决策，付费 |
-| Task | 50-200行 | Qwen 3.6 / MiniMax M2.7 | 完整功能，免费 |
+| Task | 50-200行 | MiniMax M2.7 / MiniMax M2.7 | 完整功能，免费 |
 | Sub-task | ≤50行 | MiniMax M2.5 / Llama 3.3 70B | 单函数/小块，免费最快 |
 
 **拆分原则**：
